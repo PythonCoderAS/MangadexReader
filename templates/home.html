@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css"
+          integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
+    <title>Home</title>
+    <style>tr {
+        border-bottom: 1px solid black;
+    }
+
+    .cover-image {
+        width: 50px;
+    }
+
+    img {
+        margin-right: 10px;
+        object-fit: cover;
+        height: 50px;
+    }
+
+    title {
+        max-width: 0;
+    }
+
+    #update-all-container {
+        color: red;
+    }
+    </style>
+    <script>
+        /**
+         * Hides the progress bar showing read progress and instead shows the edit menu.
+         * Swaps the edit button for the save button.
+         * @param tr_id The ID of the table row that needs to swap items.
+         */
+        function bring_up_edit_menu(tr_id) {
+            let show_now = document.getElementById(tr_id + "-edit");
+            let show_btn = document.getElementById(tr_id + "-submit-btn")
+            let show_btn2 = document.getElementById(tr_id + "-cancel-btn")
+            let hide_now = document.getElementById(tr_id + "-progress");
+            let hide_btn = document.getElementById(tr_id + "-edit-btn");
+            let hide_btn2 = document.getElementById(tr_id + "-fill-btn");
+            show_now.removeAttribute("style");
+            show_btn.removeAttribute("style");
+            show_btn2.removeAttribute("style");
+            hide_now.style.display = "none";
+            hide_btn.style.display = "none";
+            hide_btn2.style.display = "none";
+        }
+
+        /**
+         * Submit the edited values to be committed to the Postgres database and gets the new progressbar.
+         * @param tr_id The ID of the table row that had an edit.
+         */
+        function submit_edit(tr_id) {
+            let hide_now = document.getElementById(tr_id + "-edit");
+            let hide_btn = document.getElementById(tr_id + "-submit-btn");
+            let hide_btn2 = document.getElementById(tr_id + "-cancel-btn");
+            let show_btn = document.getElementById(tr_id + "-edit-btn");
+            let show_btn2 = document.getElementById(tr_id + "-fill-btn");
+            let progress_container = document.getElementById(tr_id + "-progress");
+            let new_value = document.getElementById(tr_id + "-edit-input").value;
+            $.post("/update/" + tr_id, {"read": new_value}).done((new_html) => {
+                progress_container.innerHTML = new_html;
+                progress_container.removeAttribute("style");
+                show_btn.removeAttribute("style");
+                show_btn2.removeAttribute("style");
+                hide_now.style.display = "none";
+                hide_btn.style.display = "none";
+                hide_btn2.style.display = "none";
+            });
+        }
+
+        function cancel_edit(tr_id) {
+            let hide_now = document.getElementById(tr_id + "-edit");
+            let hide_btn = document.getElementById(tr_id + "-submit-btn");
+            let hide_btn2 = document.getElementById(tr_id + "-cancel-btn");
+            let show_btn = document.getElementById(tr_id + "-edit-btn");
+            let show_btn2 = document.getElementById(tr_id + "-fill-btn");
+            let progress_container = document.getElementById(tr_id + "-progress");
+            progress_container.removeAttribute("style");
+            show_btn.removeAttribute("style");
+            show_btn2.removeAttribute("style");
+            hide_now.style.display = "none";
+            hide_btn.style.display = "none";
+            hide_btn2.style.display = "none";
+        }
+
+        function add_one(tr_id) {
+            let progress_container = document.getElementById(tr_id + "-progress");
+            $.post("/update/one/" + tr_id).done((new_html) => {
+                progress_container.innerHTML = new_html;
+            });
+        }
+
+
+        function fill(tr_id) {
+            let progress_container = document.getElementById(tr_id + "-progress");
+            $.post("/update/fill/" + tr_id).done((new_html) => {
+                progress_container.innerHTML = new_html;
+            });
+        }
+
+        /**
+         * Base function for functions "complete" and "uncomplete". They have the same syntax except for one worl.
+         * @param element The DOM element that represents the complete/completed button.
+         * @param word The word to request, one of "complete" or "uncomplete".
+         */
+        function complete_base(element, word) {
+            $.get("/" + word + "/" + element.parentNode.parentNode.id).done((new_html) => {
+                element.parentNode.innerHTML = new_html
+            });
+        }
+
+        /**
+         * Mark a manga as completed.
+         * @param element The DOM element representing the complete button.
+         */
+        function complete(element) {
+            complete_base(element, "complete");
+        }
+
+        /**
+         * Mark a manga as incomplete.
+         * @param element The DOM element representing the completed button.
+         */
+        function uncomplete(element) {
+            complete_base(element, "uncomplete");
+        }
+
+        /**
+         * Update the progress bar for the server-side "update_all" function.
+         * @param updated The amount of mangas that have been updated.
+         * @param total The total amount of mangas.
+         */
+        function replace_data(updated, total) {
+            let difference = (updated / total) * 100;
+            let progress_bar = document.getElementById("update-all-progress");
+            progress_bar.style.width = difference + "%";
+            progress_bar.setAttribute("aria-valuenow", updated);
+            progress_bar.setAttribute("aria-valuemax", total);
+            progress_bar.innerText = updated + " out of " + total;
+        }
+
+        function update_all_core() {
+            $.get("/update_status", null, "json").always(function parse_response(response) {
+                replace_data(response.updated, response.total);
+            }).done(() => {
+                setTimeout(update_all_core, 300);
+            }).fail(function finish() {
+                let progress_bar_parent = document.getElementById("update-all-progress").parentNode.parentNode;
+                progress_bar_parent.innerText = "Updating All: Completed!";
+                setTimeout(() => {
+                    location.reload();
+                }, 3000);
+            })
+        }
+
+        function update_all() {
+            let container = document.getElementById("update-all-container");
+            container.removeAttribute("style");
+            $.get("/update_all");
+            update_all_core();
+        }
+
+        function auto_complete() {
+            $.get("/auto_complete").done(() => {
+                location.reload();
+            });
+        }
+    </script>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <a class="navbar-brand" href="#">MangaDex Entry Viewer</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav mr-auto">
+            <li class="nav-item {% if home %}active{% endif %}">
+                <a class="nav-link" href="/">Home</a>
+            </li>
+            <li class="nav-item {% if incomplete %}active{% endif %}">
+                <a class="nav-link" href="/incomplete">Incomplete</a>
+            </li>
+            <li class="nav-item {% if to_read %}active{% endif %}">
+                <a class="nav-link" href="/to_read">To Read</a>
+            </li>
+        </ul>
+    </div>
+</nav>
+
+<h1 class="text-center">MangaDex Entries</h1>
+<h2 class="align-self-center align-items-center align-content-center text-center" id="update-all-container"
+    style="display: none">
+    Updating All:
+    <div class="progress">
+        <div class="progress-bar progress-bar-striped progress-bar-animated" id="update-all-progress" style="width:
+        0" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0">0 out of 0
+        </div>
+    </div>
+</h2>
+<div class="align-self-center align-items-center align-content-center text-center">
+    <button class="btn btn-primary" onclick="update_all();">Update All</button>
+    <button class="btn btn-primary" onclick="auto_complete();">Auto Complete</button>
+</div>
+<p class="text-center">There are {{ len(data) }} manga entries on this page.</p>
+<table style="width: 95%; margin: 25px; text-align: center;" class="text-center align-content-center
+align-items-center align-self-center">
+    <colgroup>
+        <col style="width: 2%;">
+        <col style="width: 50%;">
+        <col style="width: 12%;">
+        <col style="width: 2%;">
+        <col style="width: 8%;">
+        <col style="width: 25%;">
+    </colgroup>
+    <thead>
+    <tr>
+        <td>#</td>
+        <td>Manga Title</td>
+        <td>Reading Status</td>
+        <td>+</td>
+        <td>Completed</td>
+        <td>Actions</td>
+    </tr>
+    </thead>
+    <tbody>
+    {% for manga_id, title, cover_url, read, total, completed, user_completed in data %}
+        <tr id="{{ manga_id }}" class="align-middle">
+            <td><a href="#{{ manga_id }}">#</a></td>
+            <td class="title text-left" id="{{ manga_id }}-title"><a
+                    href="https://www.mangadex.org/title/{{ manga_id }}"> <img
+                    class="cover-image" src="{{ cover_url }}">{{ title }}</a></td>
+            <td class="read-status" id="{{ manga_id }}-read-status">
+                <div id="{{ manga_id }}-progress">
+                    <div class="progress">
+                        <div class="progress-bar" style="width: {{ read/total * 100|int }}%;background-color: {% if
+                    completed %}#00AAFF{% else %}#00FF66{% endif %};"
+                             aria-valuemin="0"
+                             aria-valuemax="{{ total }}" aria-valuenow="{{ read }}">{{ read }} / {{ total }}</div>
+                    </div>
+                </div>
+                <div id="{{ manga_id }}-edit" style="display: none;">
+                    <div class="input-group mb-3" style="padding-top: 15px;">
+                        <input type="text" class="form-control" aria-label="Chapters Read"
+                               id="{{ manga_id }}-edit-input">
+                        <div class="input-group-append">
+                                <span class="input-group-text">/ {{ total }} {% if total != 1 %}
+                                    chapters{% else %}chapter{% endif %}</span>
+                        </div>
+                    </div>
+                </div>
+            </td>
+            <td id="{{ manga_id }}-plus">
+                <button type="button" class="btn btn-link" onclick="add_one({{ manga_id }})">+</button>
+            </td>
+            <td id="{{ manga_id }}-complete">
+                <button class="btn btn-outline-primary {% if user_completed %}active{% endif %}"
+                        onclick="{% if user_completed %}un{% endif %}complete(this);">Complete{% if
+                user_completed %}d{% endif %}</button>
+            </td>
+            <td class="action" id="{{ manga_id }}-action">
+                <button class="btn btn-outline-info" onclick="bring_up_edit_menu({{ manga_id }})"
+                        id="{{ manga_id }}-edit-btn">Edit
+                </button>
+                <button class="btn btn-outline-info" style="display: none" id="{{ manga_id }}-submit-btn"
+                        onclick="submit_edit({{ manga_id }})">Save
+                </button>
+                <button class="btn btn-outline-info" id="{{ manga_id }}-fill-btn" onclick="fill({{ manga_id }})">
+                    Fill To Current
+                </button>
+                <button class="btn btn-outline-danger" style="display: none" id="{{ manga_id }}-cancel-btn"
+                        onclick="cancel_edit({{ manga_id }})">Cancel
+                </button>
+                <button class="btn btn-outline-danger" id="{{ manga_id }}-delete-btn">Delete</button>
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+<script src="https://code.jquery.com/jquery-3.5.1.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
+        integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"
+        crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"
+        integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI"
+        crossorigin="anonymous"></script>
+</body>
+</html>
