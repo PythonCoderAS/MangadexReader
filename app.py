@@ -3,6 +3,8 @@ from flask import Flask, abort, jsonify, render_template, render_template_string
 from database_operations import auto_complete, get_all, get_data, refresh_all, refresh_manga_data, update_data, \
     updated_count
 
+from threading import Thread
+
 app = Flask(__name__)
 
 
@@ -95,7 +97,7 @@ def update_status():
 
 @app.route("/update_all")
 def update_all():
-    refresh_all()
+    Thread(target=refresh_all).start()
     return "", 206
 
 
