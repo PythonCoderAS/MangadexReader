@@ -1,0 +1,48 @@
+<tr id="{{ manga_id }}" class="align-middle">
+    <td><a href="#{{ manga_id }}">#</a></td>
+    <td class="title text-left" id="{{ manga_id }}-title"><a
+            href="https://www.mangadex.org/title/{{ manga_id }}"> <img
+            class="cover-image" src="{{ cover_url }}">{{ title }}</a></td>
+    <td class="read-status" id="{{ manga_id }}-read-status">
+        <div id="{{ manga_id }}-progress">
+            {% include "progress-bar.html" %}
+        </div>
+        <div id="{{ manga_id }}-edit" style="display: none;">
+            <div class="input-group mb-3" style="padding-top: 15px;">
+                <input type="text" class="form-control" aria-label="Chapters Read" id="{{ manga_id }}-edit-input"
+                       value="{{ read }}">
+                <div class="input-group-append">
+                                <span class="input-group-text">/ {{ total }} {% if total != 1 %}
+                                    chapters{% else %}chapter{% endif %}</span>
+                </div>
+            </div>
+        </div>
+    </td>
+    <td id="{{ manga_id }}-plus">
+        <button type="button" class="btn btn-link" onclick="one({{ manga_id }}, '+')">+</button>
+    </td>
+    <td id="{{ manga_id }}-minus">
+        <button type="button" class="btn btn-link" onclick="one({{ manga_id }}, '-')">-</button>
+    </td>
+    <td id="{{ manga_id }}-complete">
+        {% include "complete-button.html" %}
+    </td>
+    <td class="action" id="{{ manga_id }}-action">
+        <button class="btn btn-outline-info" onclick="bring_up_edit_menu({{ manga_id }})"
+                id="{{ manga_id }}-edit-btn">Edit
+        </button>
+        <button class="btn btn-outline-info" style="display: none" id="{{ manga_id }}-submit-btn"
+                onclick="submit_edit({{ manga_id }})">Save
+        </button>
+        <button class="btn btn-outline-info" id="{{ manga_id }}-fill-btn" onclick="fill({{ manga_id }})">
+            Fill To Current
+        </button>
+        <button class="btn btn-outline-danger" style="display: none" id="{{ manga_id }}-cancel-btn"
+                onclick="cancel_edit({{ manga_id }})">Cancel
+        </button>
+        <div id="{{ manga_id }}-hide-container" style="display: inline-block;">
+            {% include "hide-button.html" %}
+        </div>
+        <button class="btn btn-outline-danger" id="{{ manga_id }}-delete-btn">Delete</button>
+    </td>
+</tr>

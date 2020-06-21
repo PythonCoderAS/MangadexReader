@@ -13,6 +13,10 @@
         width: 50px;
     }
 
+    #log {
+        height: 300px !important;
+    }
+
     img {
         margin-right: 10px;
         object-fit: cover;
@@ -22,12 +26,26 @@
     title {
         max-width: 0;
     }
-
-    #update-all-container {
-        color: red;
-    }
     </style>
     <script>
+
+        function add_log_entry(content, prepend, tr_id, tr_class, tr_style, tr_attributes) {
+            $.post("/format_log_entry", {
+                    "content": content,
+                    "tr_id": tr_id,
+                    "tr_class": tr_class,
+                    "tr_style": tr_style,
+                    "tr_attributes": tr_attributes
+                }
+            ).done((new_html) => {
+                if (prepend) {
+                    $("#log-item-container").prepend(new_html);
+                } else {
+                    $("#log-item-container").append(new_html);
+                }
+            });
+        }
+
         /**
          * Hides the progress bar showing read progress and instead shows the edit menu.
          * Swaps the edit button for the save button.
@@ -48,29 +66,6 @@
             hide_btn2.style.display = "none";
         }
 
-        /**
-         * Submit the edited values to be committed to the Postgres database and gets the new progressbar.
-         * @param tr_id The ID of the table row that had an edit.
-         */
-        function submit_edit(tr_id) {
-            let hide_now = document.getElementById(tr_id + "-edit");
-            let hide_btn = document.getElementById(tr_id + "-submit-btn");
-            let hide_btn2 = document.getElementById(tr_id + "-cancel-btn");
-            let show_btn = document.getElementById(tr_id + "-edit-btn");
-            let show_btn2 = document.getElementById(tr_id + "-fill-btn");
-            let progress_container = document.getElementById(tr_id + "-progress");
-            let new_value = document.getElementById(tr_id + "-edit-input").value;
-            $.post("/update/" + tr_id, {"read": new_value}).done((new_html) => {
-                progress_container.innerHTML = new_html;
-                progress_container.removeAttribute("style");
-                show_btn.removeAttribute("style");
-                show_btn2.removeAttribute("style");
-                hide_now.style.display = "none";
-                hide_btn.style.display = "none";
-                hide_btn2.style.display = "none";
-            });
-        }
-
         function cancel_edit(tr_id) {
             let hide_now = document.getElementById(tr_id + "-edit");
             let hide_btn = document.getElementById(tr_id + "-submit-btn");
@@ -86,29 +81,75 @@
             hide_btn2.style.display = "none";
         }
 
-        function add_one(tr_id) {
+        /**
+         * Submit the edited values to be committed to the Postgres database and gets the new progressbar.
+         * @param tr_id The ID of the table row that had an edit.
+         * @param total Total chapters
+         */
+        function submit_edit(tr_id, total) {
             let progress_container = document.getElementById(tr_id + "-progress");
-            $.post("/update/one/" + tr_id).done((new_html) => {
+            let new_value = document.getElementById(tr_id + "-edit-input").value;
+            $.post("/update/" + tr_id, {"read": new_value}).done((new_html) => {
                 progress_container.innerHTML = new_html;
+                add_log_entry('Edited manga <a href="#' + tr_id + '">#' + tr_id + '</a>. Read ' + new_value + ' out ' +
+                    'of ' + total + ' ' + 'chapters.', false, undefined, "text-success border-bottom border-success");
+            }).fail(() => {
+                add_log_entry('Unable to edit manga <a href="#' + tr_id + '">#' + tr_id + '</a>. Attempted to set ' +
+                    'value ' + '<code>read</code> to ' + new_value + ' out of ' + total + ' chapters.', false,
+                    undefined, "text-danger border-bottom border-danger")
+            }).always(() => {
+                cancel_edit(tr_id);
+            });
+        }
+
+        function one(tr_id, sign) {
+            let progress_container = document.getElementById(tr_id + "-progress");
+            let input = document.getElementById(tr_id + "-edit-input");
+            $.post("/update/one/" + sign + "/" + tr_id, null, "json").done((data) => {
+                progress_container.innerHTML = data.html;
+                input.value = data.read;
+                add_log_entry('Edited manga <a href="#' + tr_id + '">#' + tr_id + '</a>. Read ' + data.read + ' ' +
+                    'chapters. Sign ' + 'operation: ' + sign, false, undefined, "text-success border-bottom border-success");
+            }).fail(() => {
+                add_log_entry('Unable to edit manga <a href="#' + tr_id + '">#' + tr_id + '</a>. Sign operation: ' +
+                    sign, false, undefined, "text-danger border-bottom border-danger");
             });
         }
 
 
         function fill(tr_id) {
             let progress_container = document.getElementById(tr_id + "-progress");
-            $.post("/update/fill/" + tr_id).done((new_html) => {
-                progress_container.innerHTML = new_html;
+            let input = document.getElementById(tr_id + "-edit-input");
+            $.post("/update/fill/" + tr_id, null, "json").done((data) => {
+                progress_container.innerHTML = data.html;
+                input.value = data.read;
+                add_log_entry('Filled manga <a href="#' + tr_id + '">#' + tr_id + '</a>. Read ' + data.read + ' out ' +
+                    'of ' + data.read + ' ' + 'chapters.', false, undefined, "text-success border-bottom border-success");
+            }).fail(() => {
+                add_log_entry('Unable to fill manga <a href="#' + tr_id + '">#' + tr_id + '</a>.', false, undefined,
+                    "text-danger border-bottom border-danger");
             });
         }
 
         /**
-         * Base function for functions "complete" and "uncomplete". They have the same syntax except for one worl.
+         * Base function for functions. They have the same syntax except for one word.
          * @param element The DOM element that represents the complete/completed button.
-         * @param word The word to request, one of "complete" or "uncomplete".
+         * @param word The word to request.
+         * @param parentNodeCount The amount of parents to get to the parent containing the manga id
          */
-        function complete_base(element, word) {
-            $.get("/" + word + "/" + element.parentNode.parentNode.id).done((new_html) => {
-                element.parentNode.innerHTML = new_html
+        function word_action_base(element, word, parentNodeCount) {
+            parent = element
+            for (i = 0; i < parentNodeCount; i++) {
+                parent = parent.parentNode;
+            }
+
+            $.get("/" + word + "/" + parent.id).done((new_html) => {
+                element.parentNode.innerHTML = new_html;
+                add_log_entry('Ran action ' + word + ' on manga <a href="#' + parent.id + '">#' + parent.id + '</a>.', false,
+                    undefined, "text-success border-bottom border-success");
+            }).fail(() => {
+                add_log_entry('Unable to run action ' + word + ' on manga <a href="#' + parent.id + '">#' + parent.id + '</a>.',
+                    false, undefined, "text-danger border-bottom border-danger");
             });
         }
 
@@ -117,7 +158,7 @@
          * @param element The DOM element representing the complete button.
          */
         function complete(element) {
-            complete_base(element, "complete");
+            word_action_base(element, "complete", 2);
         }
 
         /**
@@ -125,7 +166,15 @@
          * @param element The DOM element representing the completed button.
          */
         function uncomplete(element) {
-            complete_base(element, "uncomplete");
+            word_action_base(element, "uncomplete", 2);
+        }
+
+        function hide(element) {
+            word_action_base(element, "hide", 3)
+        }
+
+        function unhide(element) {
+            word_action_base(element, "unhide", 3)
         }
 
         /**
@@ -148,8 +197,7 @@
             }).done(() => {
                 setTimeout(update_all_core, 300);
             }).fail(function finish() {
-                let progress_bar_parent = document.getElementById("update-all-progress").parentNode.parentNode;
-                progress_bar_parent.innerText = "Updating All: Completed!";
+                add_log_entry("Updating All: Completed!", false, undefined, "text-success border-bottom border-success");
                 setTimeout(() => {
                     location.reload();
                 }, 3000);
@@ -157,30 +205,49 @@
         }
 
         function update_all() {
-            let container = document.getElementById("update-all-container");
-            container.removeAttribute("style");
-            $.get("/update_all");
-            update_all_core();
+            $.get("/update_all").done(() => {
+                add_log_entry("Started Update All", false, undefined, "text-info border-bottom border-info");
+                add_log_entry('<div class="progress">' +
+                    '<div class="progress-bar progress-bar-striped progress-bar-animated" id="update-all-progress" style="width:' +
+                    '" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0">0 out of 0' +
+                    '</div></div>', false, "update-all-container", "align-self-center align-items-center align-content-center " +
+                    "text-center text-info border-bottom border-info");
+                update_all_core();
+            });
         }
 
         function auto_complete() {
+            add_log_entry("Started Auto Complete", false, undefined, "text-info border-bottom border-info");
             $.get("/auto_complete").done(() => {
-                location.reload();
+                add_log_entry("Auto Complete: Completed!", false, undefined, "text-success border-bottom border-success");
+                setTimeout(() => {
+                    location.reload();
+                }, 3000);
+            });
+        }
+
+        function update_from_mangadex() {
+            add_log_entry("Started Update From Mangadex", false, undefined, "text-info border-bottom border-info");
+            $.get("/update_from_mangadex").done(() => {
+                add_log_entry("Update From Mangadex: Completed!", false, undefined, "text-success border-bottom border-success");
+                setTimeout(() => {
+                    location.reload();
+                }, 3000);
             });
         }
     </script>
 </head>
 <body>
-<nav class="navbar navbar-expand-lg navbar-light bg-light">
-    <a class="navbar-brand" href="#">MangaDex Entry Viewer</a>
+<nav class="navbar navbar-expand-md navbar-light bg-light">
+    <a class="navbar-brand" href="/">MangaDex Entry Viewer</a>
     <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
             aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="navbarSupportedContent">
         <ul class="navbar-nav mr-auto">
-            <li class="nav-item {% if home %}active{% endif %}">
-                <a class="nav-link" href="/">Home</a>
+            <li class="nav-item {% if all_page %}active{% endif %}">
+                <a class="nav-link" href="/all">All</a>
             </li>
             <li class="nav-item {% if incomplete %}active{% endif %}">
                 <a class="nav-link" href="/incomplete">Incomplete</a>
@@ -188,31 +255,57 @@
             <li class="nav-item {% if to_read %}active{% endif %}">
                 <a class="nav-link" href="/to_read">To Read</a>
             </li>
+            <li class="nav-item {% if hidden %}active{% endif %}">
+                <a class="nav-link" href="/hidden">Hidden</a>
+            </li>
         </ul>
     </div>
 </nav>
 
 <h1 class="text-center">MangaDex Entries</h1>
-<h2 class="align-self-center align-items-center align-content-center text-center" id="update-all-container"
-    style="display: none">
-    Updating All:
-    <div class="progress">
-        <div class="progress-bar progress-bar-striped progress-bar-animated" id="update-all-progress" style="width:
-        0" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0">0 out of 0
+<div class="align-self-center align-items-center align-content-center text-center">
+    <button class="btn btn-primary" onclick="auto_complete();">Auto Complete</button>
+    <button class="btn btn-warning" onclick="update_all();">Update All</button>
+    <button class="btn btn-warning" onclick="update_from_mangadex();">Update From MangaDex</button>
+</div>
+<div id="log-container" style="margin: 2%;"
+     class="align-self-center">
+    <div class="card">
+        <div class="card-header" id="log-card-header">
+            <h5 class="mb-0">
+                <button class="btn btn-link collapsed" data-toggle="collapse" data-target="#log" aria-expanded="true"
+                        aria-controls="log">
+                    Actions Log
+                </button>
+            </h5>
+        </div>
+        <div id="log" class="card-body collapse show" style="overflow: scroll;"
+             aria-labelledby="log-card-header" data-parent="#log-container">
+            <table style="width: 100%;" id="log-table">
+                <colgroup>
+                    <col style="width: 10%">
+                    <col style="width: 90%">
+                </colgroup>
+                <thead>
+                <tr class="text-center align-items-center align-content-center">
+                    <td>Timestamp</td>
+                    <td>Content</td>
+                </tr>
+                </thead>
+                <tbody id="log-item-container">
+                </tbody>
+            </table>
         </div>
     </div>
-</h2>
-<div class="align-self-center align-items-center align-content-center text-center">
-    <button class="btn btn-primary" onclick="update_all();">Update All</button>
-    <button class="btn btn-primary" onclick="auto_complete();">Auto Complete</button>
 </div>
 <p class="text-center">There are {{ len(data) }} manga entries on this page.</p>
-<table style="width: 95%; margin: 25px; text-align: center;" class="text-center align-content-center
-align-items-center align-self-center">
+<table style="width: 98%; margin: 1%; text-align: center;"
+       class="text-center align-content-center align-items-center align-self-center">
     <colgroup>
         <col style="width: 2%;">
         <col style="width: 50%;">
         <col style="width: 12%;">
+        <col style="width: 2%;">
         <col style="width: 2%;">
         <col style="width: 8%;">
         <col style="width: 25%;">
@@ -223,61 +316,14 @@ align-items-center align-self-center">
         <td>Manga Title</td>
         <td>Reading Status</td>
         <td>+</td>
+        <td>-</td>
         <td>Completed</td>
         <td>Actions</td>
     </tr>
     </thead>
     <tbody>
-    {% for manga_id, title, cover_url, read, total, completed, user_completed in data %}
-        <tr id="{{ manga_id }}" class="align-middle">
-            <td><a href="#{{ manga_id }}">#</a></td>
-            <td class="title text-left" id="{{ manga_id }}-title"><a
-                    href="https://www.mangadex.org/title/{{ manga_id }}"> <img
-                    class="cover-image" src="{{ cover_url }}">{{ title }}</a></td>
-            <td class="read-status" id="{{ manga_id }}-read-status">
-                <div id="{{ manga_id }}-progress">
-                    <div class="progress">
-                        <div class="progress-bar" style="width: {{ read/total * 100|int }}%;background-color: {% if
-                    completed %}#00AAFF{% else %}#00FF66{% endif %};"
-                             aria-valuemin="0"
-                             aria-valuemax="{{ total }}" aria-valuenow="{{ read }}">{{ read }} / {{ total }}</div>
-                    </div>
-                </div>
-                <div id="{{ manga_id }}-edit" style="display: none;">
-                    <div class="input-group mb-3" style="padding-top: 15px;">
-                        <input type="text" class="form-control" aria-label="Chapters Read"
-                               id="{{ manga_id }}-edit-input">
-                        <div class="input-group-append">
-                                <span class="input-group-text">/ {{ total }} {% if total != 1 %}
-                                    chapters{% else %}chapter{% endif %}</span>
-                        </div>
-                    </div>
-                </div>
-            </td>
-            <td id="{{ manga_id }}-plus">
-                <button type="button" class="btn btn-link" onclick="add_one({{ manga_id }})">+</button>
-            </td>
-            <td id="{{ manga_id }}-complete">
-                <button class="btn btn-outline-primary {% if user_completed %}active{% endif %}"
-                        onclick="{% if user_completed %}un{% endif %}complete(this);">Complete{% if
-                user_completed %}d{% endif %}</button>
-            </td>
-            <td class="action" id="{{ manga_id }}-action">
-                <button class="btn btn-outline-info" onclick="bring_up_edit_menu({{ manga_id }})"
-                        id="{{ manga_id }}-edit-btn">Edit
-                </button>
-                <button class="btn btn-outline-info" style="display: none" id="{{ manga_id }}-submit-btn"
-                        onclick="submit_edit({{ manga_id }})">Save
-                </button>
-                <button class="btn btn-outline-info" id="{{ manga_id }}-fill-btn" onclick="fill({{ manga_id }})">
-                    Fill To Current
-                </button>
-                <button class="btn btn-outline-danger" style="display: none" id="{{ manga_id }}-cancel-btn"
-                        onclick="cancel_edit({{ manga_id }})">Cancel
-                </button>
-                <button class="btn btn-outline-danger" id="{{ manga_id }}-delete-btn">Delete</button>
-            </td>
-        </tr>
+    {% for manga_id, title, cover_url, read, total, completed, user_completed, hidden in data %}
+        {% include "row.html" %}
     {% endfor %}
     </tbody>
 </table>

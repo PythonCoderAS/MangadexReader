@@ -1,0 +1,7 @@
+<tr {% if tr_style %}style="{{ tr_style }}"{% endif %}
+    {% if tr_id %}id="{{ tr_id }}"{% endif %}
+    {% if tr_class %}class="{{ tr_class }}"{% endif %}
+        {% if tr_attributes %}{{ tr_attributes }}{% endif %}>
+    <td class="text-center">{{ timestamp }}</td>
+    <td>{{ content|safe }}</td>
+</tr>

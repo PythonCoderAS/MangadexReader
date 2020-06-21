@@ -1,9 +1,12 @@
-from flask import Flask, abort, jsonify, render_template, render_template_string, request
-
-from database_operations import auto_complete, get_all, get_data, refresh_all, refresh_manga_data, update_data, \
-    updated_count
-
+from datetime import datetime
 from threading import Thread
+
+import psycopg2.errors
+from flask import Flask, abort, jsonify, render_template, request
+from pytz import timezone
+
+from database_operations import auto_complete, auto_fill_from_mangadex, get_all, get_data, refresh_all, \
+    refresh_manga_data, update_data, updated_count
 
 app = Flask(__name__)
 
@@ -15,21 +18,35 @@ def determine_valid_ip():
 
 
 def prep_data(data):
-    return [(manga_id, title, cover_url, read, total, completed, user_completed) if len(title) <= 100
-            else (manga_id, title[:100] + "...", cover_url, read, total, completed, user_completed)
-            for manga_id, title, cover_url, read, total, completed, user_completed in data]
+    return [(manga_id, title, cover_url, read, total, completed, user_completed, hidden) if len(title) <= 100
+            else (manga_id, title[:100] + "...", cover_url, read, total, completed, user_completed, hidden)
+            for manga_id, title, cover_url, read, total, completed, user_completed, hidden in data]
 
 
 @app.route('/')
 def home():
     data = get_all(order="read / cast(total as decimal)", direction="asc")
     data = prep_data(data)
-    return render_template("home.html", data=data, home=home)
+    return render_template("home.html", data=data, home=True)
 
 
 @app.context_processor
 def load_builtins():
     return {key: value for key, value in __builtins__.items() if not key.startswith("_")}
+
+
+@app.route("/format_log_entry", methods=["POST"])
+def format_log_entry():
+    data = {
+        "content": request.form.get("content", None),
+        "tr_id": request.form.get("tr_id", None),
+        "tr_class": request.form.get("tr_class", "text-primary border-bottom border-primary"),
+        "tr_style": request.form.get("tr_style", None),
+        "tr_attributes": request.form.get("tr_attributes", None),
+        'timestamp': request.form.get("timestamp",
+                                      timezone("America/New_York").fromutc(datetime.utcnow()).strftime("%I:%M:%S %p"))
+    }
+    return render_template("log-entry.html", **data)
 
 
 @app.route("/update/<int:manga_id>", methods=["POST"])
@@ -44,37 +61,40 @@ def update(manga_id):
         if not read.isnumeric():
             abort(400)
         read_int = int(read)
-        title, cover_url, read_int, total, completed, user_completed = update_data(manga_id, read=read_int)
-        return render_template_string("""<div class="progress">
-                    <div class="progress-bar" style="width: {{ read/total * 100|int }}%;background-color: {% if
-                    completed %}#00AAFF{% else %}#00FF66{% endif %};"
-                         aria-valuemin="0"
-                         aria-valuemax="{{ total }}" aria-valuenow="{{ read }}">{{ read }} / {{ total }}</div>
-                </div>""",
-                                      title=title, cover_url=cover_url, read=read_int, total=total, completed=completed,
-                                      user_completed=user_completed)
+        try:
+            title, cover_url, read_int, total, completed, user_completed, hidden = update_data(manga_id, read=read_int)
+        except psycopg2.errors.CheckViolation:
+            abort(400)
+        else:
+            return render_template("progress-bar.html", read=read_int, total=total, completed=completed)
 
 
-@app.route("/update/one/<int:manga_id>", methods=["POST"])
-def add_one(manga_id):
+@app.route("/update/one/<sign>/<int:manga_id>", methods=["POST"])
+def one(sign, manga_id):
     read, = get_data(manga_id, parameters=["read"])
-    read += 1
-    title, cover_url, read, total, completed, user_completed = update_data(manga_id, read=read)
-    return render_template_string("""<div class="progress">
-                        <div class="progress-bar" style="width: {{ read/total * 100|int }}%;background-color: {% if
-                        completed %}#00AAFF{% else %}#00FF66{% endif %};"
-                             aria-valuemin="0"
-                             aria-valuemax="{{ total }}" aria-valuenow="{{ read }}">{{ read }} / {{ total }}</div>
-                    </div>""",
-                                  title=title, cover_url=cover_url, read=read, total=total, completed=completed,
-                                  user_completed=user_completed)
+    if sign == "+":
+        read += 1
+    elif sign == "-":
+        read -= 1
+    else:
+        abort(400)
+    try:
+        title, cover_url, read, total, completed, user_completed, hidden = update_data(manga_id, read=read)
+    except psycopg2.errors.CheckViolation:
+        abort(400)
+    else:
+        return jsonify({"html": render_template("progress-bar.html", read=read, total=total, completed=completed),
+                        "read": read})
 
 
 def complete_base(manga_id, user_completed):
     update_data(manga_id, user_completed=user_completed)
-    return render_template_string("""<button class="btn btn-outline-primary {% if user_completed %}active{% endif %}"
-                            onclick="{% if user_completed %}un{% endif %}complete(this);">Complete{% if
-                    user_completed %}d{% endif %}</button>""", user_completed=user_completed)
+    return render_template("complete-button.html", user_completed=user_completed)
+
+
+def hide_base(manga_id, hidden):
+    update_data(manga_id, hidden=hidden)
+    return render_template("hide-button.html", hidden=hidden)
 
 
 @app.route("/uncomplete/<int:manga_id>")
@@ -131,15 +151,40 @@ def auto_complete_endpoint():
 @app.route("/update/fill/<int:manga_id>", methods=["POST"])
 def fill(manga_id):
     total, = get_data(manga_id, parameters=["total"])
-    title, cover_url, read, total, completed, user_completed = update_data(manga_id, read=total)
-    return render_template_string("""<div class="progress">
-                        <div class="progress-bar" style="width: {{ read/total * 100|int }}%;background-color: {% if
-                        completed %}#00AAFF{% else %}#00FF66{% endif %};"
-                             aria-valuemin="0"
-                             aria-valuemax="{{ total }}" aria-valuenow="{{ read }}">{{ read }} / {{ total }}</div>
-                    </div>""",
-                                  title=title, cover_url=cover_url, read=read, total=total, completed=completed,
-                                  user_completed=user_completed)
+    title, cover_url, read, total, completed, user_completed, hidden = update_data(manga_id, read=total)
+    return jsonify({"html": render_template("progress-bar.html", read=read, total=total, completed=completed),
+                    "read": total})
+
+
+@app.route("/hidden")
+def hidden_data():
+    data = get_all(order="read / cast(total as decimal)", direction="asc", hidden=True)
+    data = prep_data(data)
+    return render_template("home.html", data=data, hidden=True)
+
+
+@app.route("/hide/<int:manga_id>")
+def hide(manga_id):
+    return hide_base(manga_id, True)
+
+
+@app.route("/unhide/<int:manga_id>")
+def unhide(manga_id):
+    return hide_base(manga_id, False)
+
+
+@app.route("/all")
+def all_items():
+    data = get_all(order="read / cast(total as decimal)", direction="asc", hidden=None)
+    data = prep_data(data)
+    return render_template("home.html", data=data, all_page=True)
+
+
+@app.route("/update_from_mangadex")
+def update_from_mangadex():
+    auto_fill_from_mangadex()
+    return "", 206
+
 
 if __name__ == '__main__':
     app.run()

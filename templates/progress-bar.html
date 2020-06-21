@@ -1,0 +1,7 @@
+<div class="progress">
+    <div class="progress-bar" style="width: {{ read/total * 100 }}%;background-color: {% if
+                    completed %}#00AAFF{% else %}green{% endif %};"
+         aria-valuemin="0"
+         aria-valuemax="{{ total }}" aria-valuenow="{{ read }}">{{ read }} / {{ total }} [{{ (read/total * 100)|int }}%]
+    </div>
+</div>
