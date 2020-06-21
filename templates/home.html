@@ -102,6 +102,18 @@
             });
         }
 
+        function refresh(tr_id) {
+            let row_container = document.getElementById(tr_id);
+            $.post("/update/" + tr_id, {"refresh_data": true}).done((new_html) => {
+                row_container.innerHTML = new_html;
+                add_log_entry('Refreshed manga <a href="#' + parent.id + '">#' + parent.id + '</a>.', false,
+                    undefined, "text-success border-bottom border-success");
+            }).fail(() => {
+                add_log_entry('Unable to refresh manga <a href="#' + parent.id + '">#' + parent.id + '</a>.',
+                    false, undefined, "text-danger border-bottom border-danger");
+            });
+        }
+
         function one(tr_id, sign) {
             let progress_container = document.getElementById(tr_id + "-progress");
             let input = document.getElementById(tr_id + "-edit-input");
@@ -192,11 +204,11 @@
         }
 
         function update_all_core() {
-            $.get("/update_status", null, "json").always(function parse_response(response) {
-                replace_data(response.updated, response.total);
-            }).done(() => {
+            $.get("/update_status", null, "json").always(function parse_response(jqXHR, response_data) {
+                replace_data(jqXHR.responseJSON.updated, jqXHR.responseJSON.total);
+            }).done((jqXHR, response_data) => {
                 setTimeout(update_all_core, 300);
-            }).fail(function finish() {
+            }).fail(function finish(jqXHR, response_data) {
                 add_log_entry("Updating All: Completed!", false, undefined, "text-success border-bottom border-success");
                 setTimeout(() => {
                     location.reload();
@@ -303,12 +315,12 @@
        class="text-center align-content-center align-items-center align-self-center">
     <colgroup>
         <col style="width: 2%;">
-        <col style="width: 50%;">
+        <col style="width: 40%;">
         <col style="width: 12%;">
         <col style="width: 2%;">
         <col style="width: 2%;">
         <col style="width: 8%;">
-        <col style="width: 25%;">
+        <col style="width: 35%;">
     </colgroup>
     <thead>
     <tr>

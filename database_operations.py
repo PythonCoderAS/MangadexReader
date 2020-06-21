@@ -121,7 +121,7 @@ def get_all(parameters: Optional[Union[List[str], str]] = None, order: str = "ma
 
 def refresh_manga_data(manga_id: int):
     manga_id, title, cover_url, total, completed = fetch_data(manga_id)
-    update_data(manga_id, title=title, cover_url=cover_url, total=total, completed=completed)
+    return update_data(manga_id, title=title, cover_url=cover_url, total=total, completed=completed)
 
 
 def refresh_all():

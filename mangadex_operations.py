@@ -1,9 +1,12 @@
 import re
+import warnings
 from html import unescape
 from typing import Dict, List, Optional, Tuple, Union
 
 import bs4
 import cloudscraper
+
+warnings.filterwarnings("ignore", category=UserWarning, module='bs4')
 
 manga_link_regex = re.compile("/manga/([0-9]+)/[\S]+")
 
@@ -39,7 +42,7 @@ def fetch_data(manga_id: int) -> Tuple[int, str, str, int, bool]:
 
 def get_list_data(section_number):
     r = scraper.get(f"https://mangadex.org/list/555579/{section_number}/2/1")
-    soup = bs4.BeautifulSoup(r.text, features="html5lib")
+    soup = bs4.BeautifulSoup(r.text)
     page_link_regex = re.compile(fr"/list/555579/{section_number}/2/([0-9]+)")
     highest_page = max(
         [int(page_link_regex.search(a["href"]).group(1)) for a in soup.find_all("a", href=page_link_regex)] + [1])
@@ -47,9 +50,9 @@ def get_list_data(section_number):
                  soup.find_all("a", href=manga_link_regex)]
     for page in range(2, highest_page + 1):
         r = scraper.get(f"https://mangadex.org/list/555579/{section_number}/2/{page}")
-        soup = bs4.BeautifulSoup(r.text, features="html5lib")
+        soup = bs4.BeautifulSoup(r.text)
         total_ids += [int(manga_link_regex.search(item["href"]).group(1)) for item in
-                     soup.find_all("a", href=manga_link_regex)]
+                      soup.find_all("a", href=manga_link_regex)]
     return total_ids
 
 

@@ -19,7 +19,7 @@ def determine_valid_ip():
 
 def prep_data(data):
     return [(manga_id, title, cover_url, read, total, completed, user_completed, hidden) if len(title) <= 100
-            else (manga_id, title[:100] + "...", cover_url, read, total, completed, user_completed, hidden)
+            else (manga_id, title[:80] + "...", cover_url, read, total, completed, user_completed, hidden)
             for manga_id, title, cover_url, read, total, completed, user_completed, hidden in data]
 
 
@@ -56,7 +56,9 @@ def update(manga_id):
     if read is None and refresh_data is None:
         abort(400)
     if refresh_data is not None:
-        refresh_manga_data(manga_id)
+        title, cover_url, read, total, completed, user_completed, hidden = refresh_manga_data(manga_id)
+        return render_template("row.html", manga_id=manga_id, title=title, cover_url=cover_url, read=read,
+                               total=total, completed=completed, user_completed=user_completed, hidden=hidden)
     if read is not None:
         if not read.isnumeric():
             abort(400)
