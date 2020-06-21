@@ -106,10 +106,10 @@
             let row_container = document.getElementById(tr_id);
             $.post("/update/" + tr_id, {"refresh_data": true}).done((new_html) => {
                 row_container.innerHTML = new_html;
-                add_log_entry('Refreshed manga <a href="#' + parent.id + '">#' + parent.id + '</a>.', false,
+                add_log_entry('Refreshed manga <a href="#' + tr_id + '">#' + tr_id + '</a>.', false,
                     undefined, "text-success border-bottom border-success");
             }).fail(() => {
-                add_log_entry('Unable to refresh manga <a href="#' + parent.id + '">#' + parent.id + '</a>.',
+                add_log_entry('Unable to refresh manga <a href="#' + tr_id + '">#' + tr_id + '</a>.',
                     false, undefined, "text-danger border-bottom border-danger");
             });
         }
