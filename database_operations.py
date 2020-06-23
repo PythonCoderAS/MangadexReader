@@ -1,6 +1,8 @@
 import os
 import sys
 from typing import List, Optional, Tuple, Union
+import requests.exceptions
+
 
 import psycopg2
 
@@ -129,8 +131,10 @@ def refresh_all():
     cursor.execute("""UPDATE mangadex SET updated = FALSE""")
     cursor.execute("""SELECT MANGA_ID FROM mangadex""")
     for manga_id, in cursor.fetchall():
-        refresh_manga_data(manga_id)
-
+        try:
+            refresh_manga_data(manga_id)
+        except requests.exceptions.HTTPError:
+            continue
 
 def updated_count() -> Tuple[int, int]:
     cursor = conn.cursor()
