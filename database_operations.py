@@ -134,6 +134,7 @@ def refresh_all():
             refresh_manga_data(manga_id)
         except Exception as e:
             traceback.print_exc()
+            update_data(manga_id)
 
 def updated_count() -> Tuple[int, int]:
     cursor = conn.cursor()
