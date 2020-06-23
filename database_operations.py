@@ -1,8 +1,7 @@
 import os
 import sys
 from typing import List, Optional, Tuple, Union
-import requests.exceptions
-
+import traceback
 
 import psycopg2
 
@@ -133,8 +132,8 @@ def refresh_all():
     for manga_id, in cursor.fetchall():
         try:
             refresh_manga_data(manga_id)
-        except requests.exceptions.HTTPError:
-            continue
+        except Exception as e:
+            traceback.print_exc()
 
 def updated_count() -> Tuple[int, int]:
     cursor = conn.cursor()
