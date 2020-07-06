@@ -5,7 +5,7 @@ import traceback
 
 import psycopg2
 
-from mangadex_operations import fetch_data, update_from_mangadex
+from .mangadex_operations import fetch_data, update_from_mangadex
 
 DATABASE_URL = os.environ['DATABASE_URL']
 

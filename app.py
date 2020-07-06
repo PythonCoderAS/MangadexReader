@@ -5,7 +5,7 @@ import psycopg2.errors
 from flask import Flask, abort, jsonify, render_template, request
 from pytz import timezone
 
-from database_operations import auto_complete, auto_fill_from_mangadex, get_all, get_data, refresh_all, \
+from .database_operations import auto_complete, auto_fill_from_mangadex, get_all, get_data, refresh_all, \
     refresh_manga_data, update_data, updated_count
 
 app = Flask(__name__)

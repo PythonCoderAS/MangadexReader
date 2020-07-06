@@ -30,7 +30,7 @@
     <script>
 
         function add_log_entry(content, prepend, tr_id, tr_class, tr_style, tr_attributes) {
-            $.post("/format_log_entry", {
+            $.post("format_log_entry", {
                     "content": content,
                     "tr_id": tr_id,
                     "tr_class": tr_class,
@@ -89,7 +89,7 @@
         function submit_edit(tr_id, total) {
             let progress_container = document.getElementById(tr_id + "-progress");
             let new_value = document.getElementById(tr_id + "-edit-input").value;
-            $.post("/update/" + tr_id, {"read": new_value}).done((new_html) => {
+            $.post("update/" + tr_id, {"read": new_value}).done((new_html) => {
                 progress_container.innerHTML = new_html;
                 add_log_entry('Edited manga <a href="#' + tr_id + '">#' + tr_id + '</a>. Read ' + new_value + ' out ' +
                     'of ' + total + ' ' + 'chapters.', false, undefined, "text-success border-bottom border-success");
@@ -104,7 +104,7 @@
 
         function refresh(tr_id) {
             let row_container = document.getElementById(tr_id);
-            $.post("/update/" + tr_id, {"refresh_data": true}).done((new_html) => {
+            $.post("update/" + tr_id, {"refresh_data": true}).done((new_html) => {
                 row_container.innerHTML = new_html;
                 add_log_entry('Refreshed manga <a href="#' + tr_id + '">#' + tr_id + '</a>.', false,
                     undefined, "text-success border-bottom border-success");
@@ -117,7 +117,7 @@
         function one(tr_id, sign) {
             let progress_container = document.getElementById(tr_id + "-progress");
             let input = document.getElementById(tr_id + "-edit-input");
-            $.post("/update/one/" + sign + "/" + tr_id, null, "json").done((data) => {
+            $.post("update/one/" + sign + "/" + tr_id, null, "json").done((data) => {
                 progress_container.innerHTML = data.html;
                 input.value = data.read;
                 add_log_entry('Edited manga <a href="#' + tr_id + '">#' + tr_id + '</a>. Read ' + data.read + ' ' +
@@ -132,7 +132,7 @@
         function fill(tr_id) {
             let progress_container = document.getElementById(tr_id + "-progress");
             let input = document.getElementById(tr_id + "-edit-input");
-            $.post("/update/fill/" + tr_id, null, "json").done((data) => {
+            $.post("update/fill/" + tr_id, null, "json").done((data) => {
                 progress_container.innerHTML = data.html;
                 input.value = data.read;
                 add_log_entry('Filled manga <a href="#' + tr_id + '">#' + tr_id + '</a>. Read ' + data.read + ' out ' +
@@ -155,7 +155,7 @@
                 parent = parent.parentNode;
             }
 
-            $.get("/" + word + "/" + parent.id).done((new_html) => {
+            $.get(word + "/" + parent.id).done((new_html) => {
                 element.parentNode.innerHTML = new_html;
                 add_log_entry('Ran action ' + word + ' on manga <a href="#' + parent.id + '">#' + parent.id + '</a>.', false,
                     undefined, "text-success border-bottom border-success");
@@ -204,11 +204,11 @@
         }
 
         function update_all_core() {
-            $.get("/update_status", null, "json").always(function parse_response(data, response_status, jqXHR) {
+            $.get("update_status", null, "json").always(function parse_response(jqXHR, response_data) {
                 replace_data(jqXHR.responseJSON.updated, jqXHR.responseJSON.total);
             }).done((jqXHR, response_data) => {
                 setTimeout(update_all_core, 300);
-            }).fail(function finish(jqXHR, response_data) {
+            }).fail((jqXHR, response_data)=>{
                 add_log_entry("Updating All: Completed!", false, undefined, "text-success border-bottom border-success");
                 setTimeout(() => {
                     location.reload();
@@ -217,7 +217,7 @@
         }
 
         function update_all() {
-            $.get("/update_all").done(() => {
+            $.get("update_all").done(() => {
                 add_log_entry("Started Update All", false, undefined, "text-info border-bottom border-info");
                 add_log_entry('<div class="progress">' +
                     '<div class="progress-bar progress-bar-striped progress-bar-animated" id="update-all-progress" style="width:' +
@@ -230,7 +230,7 @@
 
         function auto_complete() {
             add_log_entry("Started Auto Complete", false, undefined, "text-info border-bottom border-info");
-            $.get("/auto_complete").done(() => {
+            $.get("auto_complete").done(() => {
                 add_log_entry("Auto Complete: Completed!", false, undefined, "text-success border-bottom border-success");
                 setTimeout(() => {
                     location.reload();
@@ -240,7 +240,7 @@
 
         function update_from_mangadex() {
             add_log_entry("Started Update From Mangadex", false, undefined, "text-info border-bottom border-info");
-            $.get("/update_from_mangadex").done(() => {
+            $.get("update_from_mangadex").done(() => {
                 add_log_entry("Update From Mangadex: Completed!", false, undefined, "text-success border-bottom border-success");
                 setTimeout(() => {
                     location.reload();
@@ -259,16 +259,16 @@
     <div class="collapse navbar-collapse" id="navbarSupportedContent">
         <ul class="navbar-nav mr-auto">
             <li class="nav-item {% if all_page %}active{% endif %}">
-                <a class="nav-link" href="/all">All</a>
+                <a class="nav-link" href="all">All</a>
             </li>
             <li class="nav-item {% if incomplete %}active{% endif %}">
-                <a class="nav-link" href="/incomplete">Incomplete</a>
+                <a class="nav-link" href="incomplete">Incomplete</a>
             </li>
             <li class="nav-item {% if to_read %}active{% endif %}">
-                <a class="nav-link" href="/to_read">To Read</a>
+                <a class="nav-link" href="to_read">To Read</a>
             </li>
             <li class="nav-item {% if hidden %}active{% endif %}">
-                <a class="nav-link" href="/hidden">Hidden</a>
+                <a class="nav-link" href="hidden">Hidden</a>
             </li>
         </ul>
     </div>
