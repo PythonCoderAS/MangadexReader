@@ -184,7 +184,7 @@ def all_items():
 
 @app.route("/update_from_mangadex")
 def update_from_mangadex():
-    auto_fill_from_mangadex()
+    Thread(target=auto_fill_from_mangadex).start*(
     return "", 206
 
 
