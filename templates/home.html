@@ -204,11 +204,11 @@
         }
 
         function update_all_core() {
-            $.get("update_status", null, "json").always(function parse_response(jqXHR, response_data) {
-                replace_data(jqXHR.responseJSON.updated, jqXHR.responseJSON.total);
+            $.get("update_status", null, "json").always(function parse_response(data) {
+                replace_data(data.updated, data.total);
             }).done((jqXHR, response_data) => {
-                setTimeout(update_all_core, 300);
-            }).fail((jqXHR, response_data)=>{
+                setTimeout(update_all_core, 1000);
+            }).error((jqXHR, response_data)=>{
                 add_log_entry("Updating All: Completed!", false, undefined, "text-success border-bottom border-success");
                 setTimeout(() => {
                     location.reload();
@@ -224,7 +224,7 @@
                     '" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0">0 out of 0' +
                     '</div></div>', false, "update-all-container", "align-self-center align-items-center align-content-center " +
                     "text-center text-info border-bottom border-info");
-                update_all_core();
+                setTimeout(update_all_core, 300);
             });
         }
 
@@ -269,6 +269,9 @@
             </li>
             <li class="nav-item {% if hidden %}active{% endif %}">
                 <a class="nav-link" href="hidden">Hidden</a>
+            </li>
+            <li class="nav-item {% if mal %}active{% endif %}">
+                <a class="nav-link" href="mal">MAL</a>
             </li>
         </ul>
     </div>
@@ -334,7 +337,7 @@
     </tr>
     </thead>
     <tbody>
-    {% for manga_id, title, cover_url, read, total, completed, user_completed, hidden in data %}
+    {% for manga_id, title, cover_url, read, total, completed, user_completed, hidden, myanimelist in data %}
         {% include "row.html" %}
     {% endfor %}
     </tbody>

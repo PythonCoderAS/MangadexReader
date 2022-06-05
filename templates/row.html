@@ -46,6 +46,8 @@
         <div id="{{ manga_id }}-hide-container" style="display: inline-block;">
             {% include "hide-button.html" %}
         </div>
-        <button class="btn btn-outline-danger" id="{{ manga_id }}-delete-btn">Delete</button>
+        {% if myanimelist %}
+        <a class="btn btn-outline-info" id="{{ manga_id }}-mal-btn" href="https://myanimelist.net/manga/{{ myanimelist }}/" target="_blank">MAL Entry</a>
+        {% endif %}
     </td>
 </tr>

@@ -18,9 +18,9 @@ def determine_valid_ip():
 
 
 def prep_data(data):
-    return [(manga_id, title, cover_url, read, total, completed, user_completed, hidden) if len(title) <= 100
-            else (manga_id, title[:80] + "...", cover_url, read, total, completed, user_completed, hidden)
-            for manga_id, title, cover_url, read, total, completed, user_completed, hidden in data]
+    return [(manga_id, title, cover_url, read, total, completed, user_completed, hidden, myanimelist) if len(title) <= 100
+            else (manga_id, title[:80] + "...", cover_url, read, total, completed, user_completed, hidden, myanimelist)
+            for manga_id, title, cover_url, read, total, completed, user_completed, hidden, myanimelist in data]
 
 
 @app.route('/')
@@ -56,15 +56,15 @@ def update(manga_id):
     if read is None and refresh_data is None:
         abort(400)
     if refresh_data is not None:
-        title, cover_url, read, total, completed, user_completed, hidden = refresh_manga_data(manga_id)
+        title, cover_url, read, total, completed, user_completed, hidden, myanimelist = refresh_manga_data(manga_id)
         return render_template("row.html", manga_id=manga_id, title=title, cover_url=cover_url, read=read,
-                               total=total, completed=completed, user_completed=user_completed, hidden=hidden)
+                               total=total, completed=completed, user_completed=user_completed, hidden=hidden, myanimelist=myanimelist)
     if read is not None:
         if not read.isnumeric():
             abort(400)
         read_int = int(read)
         try:
-            title, cover_url, read_int, total, completed, user_completed, hidden = update_data(manga_id, read=read_int)
+            title, cover_url, read_int, total, completed, user_completed, hidden, myanimelist = update_data(manga_id, read=read_int)
         except psycopg2.errors.CheckViolation:
             abort(400)
         else:
@@ -81,7 +81,7 @@ def one(sign, manga_id):
     else:
         abort(400)
     try:
-        title, cover_url, read, total, completed, user_completed, hidden = update_data(manga_id, read=read)
+        title, cover_url, read, total, completed, user_completed, hidden, myanimelist = update_data(manga_id, read=read)
     except psycopg2.errors.CheckViolation:
         abort(400)
     else:
@@ -153,7 +153,7 @@ def auto_complete_endpoint():
 @app.route("/update/fill/<int:manga_id>", methods=["POST"])
 def fill(manga_id):
     total, = get_data(manga_id, parameters=["total"])
-    title, cover_url, read, total, completed, user_completed, hidden = update_data(manga_id, read=total)
+    title, cover_url, read, total, completed, user_completed, hidden, myanimelist = update_data(manga_id, read=total)
     return jsonify({"html": render_template("progress-bar.html", read=read, total=total, completed=completed),
                     "read": total})
 
@@ -182,9 +182,16 @@ def all_items():
     return render_template("home.html", data=data, all_page=True)
 
 
+@app.route("/mal")
+def mal_items():
+    data = get_all(order="read / cast(total as decimal)", direction="asc", hidden=None, where="myanimelist is not null")
+    data = prep_data(data)
+    return render_template("home.html", data=data, mal=True)
+
 @app.route("/update_from_mangadex")
 def update_from_mangadex():
-    Thread(target=auto_fill_from_mangadex).start*(
+    Thread(target=auto_fill_from_mangadex).start()
+    # auto_fill_from_mangadex()
     return "", 206
 
 
